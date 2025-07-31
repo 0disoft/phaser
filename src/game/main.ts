@@ -1,5 +1,5 @@
+import { AUTO, Game, Scale, Types } from 'phaser';
 import { Game as MainGame } from './scenes/Game';
-import { AUTO, Game, Scale,Types } from 'phaser';
 
 // Find out more information about the Game Config at:
 // https://docs.phaser.io/api-documentation/typedef/types-core#gameconfig
@@ -15,11 +15,15 @@ const config: Types.Core.GameConfig = {
     },
     scene: [
         MainGame
-    ]
+    ],
+    render: {
+        pixelArt: false,
+        roundPixels: true // 렌더링 좌표를 정수로 반올림 
+    }
 };
 
 const StartGame = (parent: string) => {
     return new Game({ ...config, parent });
-}
+};
 
 export default StartGame;
