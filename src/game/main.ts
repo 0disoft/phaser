@@ -4,26 +4,33 @@ import { Game as MainGame } from './scenes/Game';
 // Find out more information about the Game Config at:
 // https://docs.phaser.io/api-documentation/typedef/types-core#gameconfig
 const config: Types.Core.GameConfig = {
-    type: AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    parent: 'game-container',
-    backgroundColor: '#dda15e',
-    scale: {
-        mode: Scale.ENVELOP,
-        autoCenter: Scale.CENTER_BOTH
-    },
-    scene: [
-        MainGame
-    ],
-    render: {
-        pixelArt: false,
-        roundPixels: true // 렌더링 좌표를 정수로 반올림 
+  type: AUTO,
+  width: window.innerWidth,
+  height: window.innerHeight,
+  parent: 'game-container',
+  backgroundColor: '#dda15e',
+  scale: {
+    mode: Scale.ENVELOP,
+    autoCenter: Scale.CENTER_BOTH
+  },
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { x: 0, y: 0 },
+      debug: false
     }
+  },
+  scene: [
+    MainGame
+  ],
+  render: {
+    pixelArt: false,
+    roundPixels: true // 렌더링 좌표를 정수로 반올림 
+  }
 };
 
 const StartGame = (parent: string) => {
-    return new Game({ ...config, parent });
+  return new Game({ ...config, parent });
 };
 
 export default StartGame;
