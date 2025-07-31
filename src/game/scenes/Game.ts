@@ -28,8 +28,8 @@ export class Game extends Scene {
     ).setOrigin(0.5);
 
     // 클릭할 버튼 역할을 할 텍스트 오브젝트를 추가함
-    const button = this.add.text(
-      this.cameras.main.width / 2,
+    const increaseButton = this.add.text(
+      this.cameras.main.width / 2 - 100,
       this.cameras.main.height / 2 + 50,
       '증가',
       {
@@ -37,18 +37,46 @@ export class Game extends Scene {
         color: '#00ff00',
         backgroundColor: '#555555',
         padding: { x: 20, y: 10 }
-      }
-    ).setOrigin(0.5);
+      }).setOrigin(0.5);
 
     // 버튼에 상호작용을 활성화함
-    button.setInteractive({ useHandCursor: true }); // 마우스를 올리면 손가락 커서로
+    increaseButton.setInteractive({ useHandCursor: true }); // 마우스를 올리면 손가락 커서로
 
     // 버튼에 'pointerdown' (클릭) 이벤트를 감지하는 리스너 추가 
-    button.on('pointerdown', () => {
+    increaseButton.on('pointerdown', () => {
       // 카운터 값을 1 증가시킴
       this.counterValue++;
       // 숫자를 표시하는 텍스트의 내용을 업데이트함 
       this.counterText.setText(`Count: ${this.counterValue}`);
+    });
+
+    // 리셋 버튼을 오른쪽에 추가함 
+    const resetButton = this.add.text(
+      this.cameras.main.width / 2 + 100,
+      this.cameras.main.height / 2 + 50,
+      '리셋',
+      {
+        fontSize: '32px',
+        color: '#ff9900',
+        backgroundColor: '#555555',
+        padding: { x: 20, y: 10 }
+      }).setOrigin(0.5);
+
+    // 상호작용과 이벤트 설정
+    resetButton.setInteractive({ useHandCursor: true });
+    resetButton.on('pointerdown', () => {
+      // 카운터 값을 0으로 바꾸고 화면의 텍스트 업데이트 
+      this.counterValue = 0;
+      this.counterText.setText(`Count: ${this.counterValue}`);
+    });
+
+    // 풀스크린 기능
+    this.input.keyboard?.on('keydown-F', () => {
+      if (this.scale.isFullscreen) {
+        this.scale.stopFullscreen();
+      } else {
+        this.scale.startFullscreen();
+      }
     });
   }
 }
