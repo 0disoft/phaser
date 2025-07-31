@@ -2,8 +2,6 @@ import { Scene } from 'phaser';
 
 export class Game extends Scene {
   // 카운터 숫자와 텍스트 오브젝트를 담을 변수를 미리 선언
-  private counterValue: number;
-  private counterText: Phaser.GameObjects.Text;
   constructor() {
     super('Game');
   }
@@ -16,59 +14,21 @@ export class Game extends Scene {
   }
 
   create() {
-    // 카운터 초기값을 0으로 설정
-    this.counterValue = 0;
+    // 대포 역할을 할 직사각형을 만듦
+    const cannon = this.add.rectangle(
+      this.cameras.main.width / 2, // x좌표: 화면 가로 중앙
+      this.cameras.main.height, // y좌표: 화면 맨 아래 
+      20, // 가로 크기 
+      40, // 세로 크기
+      0x666666 // 색상: 회색 
+    );
 
-    // 숫자를 표시할 텍스트 오브젝트를 화면에 추가
-    this.counterText = this.add.text(
-      this.cameras.main.width / 2,
-      this.cameras.main.height / 2 - 50,
-      `Count: ${this.counterValue}`,
-      { fontSize: '48px', color: '#ffffff' }
-    ).setOrigin(0.5);
+    // 대포의 회전 기준점을 아래쪽 중앙으로 설정함
+    cannon.setOrigin(0.5, 1);
 
-    // 클릭할 버튼 역할을 할 텍스트 오브젝트를 추가함
-    const increaseButton = this.add.text(
-      this.cameras.main.width / 2 - 100,
-      this.cameras.main.height / 2 + 50,
-      '증가',
-      {
-        fontSize: '32px',
-        color: '#00ff00',
-        backgroundColor: '#555555',
-        padding: { x: 20, y: 10 }
-      }).setOrigin(0.5);
-
-    // 버튼에 상호작용을 활성화함
-    increaseButton.setInteractive({ useHandCursor: true }); // 마우스를 올리면 손가락 커서로
-
-    // 버튼에 'pointerdown' (클릭) 이벤트를 감지하는 리스너 추가 
-    increaseButton.on('pointerdown', () => {
-      // 카운터 값을 1 증가시킴
-      this.counterValue++;
-      // 숫자를 표시하는 텍스트의 내용을 업데이트함 
-      this.counterText.setText(`Count: ${this.counterValue}`);
-    });
-
-    // 리셋 버튼을 오른쪽에 추가함 
-    const resetButton = this.add.text(
-      this.cameras.main.width / 2 + 100,
-      this.cameras.main.height / 2 + 50,
-      '리셋',
-      {
-        fontSize: '32px',
-        color: '#ff9900',
-        backgroundColor: '#555555',
-        padding: { x: 20, y: 10 }
-      }).setOrigin(0.5);
-
-    // 상호작용과 이벤트 설정
-    resetButton.setInteractive({ useHandCursor: true });
-    resetButton.on('pointerdown', () => {
-      // 카운터 값을 0으로 바꾸고 화면의 텍스트 업데이트 
-      this.counterValue = 0;
-      this.counterText.setText(`Count: ${this.counterValue}`);
-    });
+    // 대포의 각도를 설정함
+    // Phaser에선 0도가 오른쪽 방향이므로 위쪽을 보려면 -90도로 설정해야 함 
+    cannon.angle = 0;
 
     // 풀스크린 기능
     this.input.keyboard?.on('keydown-F', () => {

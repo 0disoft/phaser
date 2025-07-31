@@ -8,7 +8,7 @@ const config: Types.Core.GameConfig = {
     width: window.innerWidth,
     height: window.innerHeight,
     parent: 'game-container',
-    backgroundColor: '#028af8',
+    backgroundColor: '#dda15e',
     scale: {
         mode: Scale.ENVELOP,
         autoCenter: Scale.CENTER_BOTH
