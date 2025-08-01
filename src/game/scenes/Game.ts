@@ -22,11 +22,14 @@ export class Game extends Scene {
   private cannonContainer: GameObjects.Container;
   private cursors: Types.Input.Keyboard.CursorKeys;
   private bullets: GameObjects.Group;
+  private bricks: GameObjects.Group;
   private bulletSpeed = 200;
   private maxBullets = 2;
+  private cannonRotationSpeed = 3; // 대포 회전 속도 변수 
   private bulletCountText: GameObjects.Text; // 탄환수 UI 텍스트 
   private speedText: GameObjects.Text; // 속도 UI 텍스트 
-  private bricks: GameObjects.Group;
+  private rotationSpeedText: GameObjects.Text; // 회전 속도 UI 텍스트 
+
 
   // 카운터 숫자와 텍스트 오브젝트를 담을 변수를 미리 선언
   constructor() {
@@ -70,28 +73,6 @@ export class Game extends Scene {
 
     this.createCannonAndUI();
     this.setupInput();
-
-    // UI 텍스트 생성
-    const availableBullets = this.bullets.getTotalFree();
-    this.bulletCountText = this.add.text(
-      this.cameras.main.width - 20, // 화면 오른쪽 끝에서 20px 안쪽 
-      20, // 화면 위쪽 끝에서 20px 아래 
-      `Bullets: ${availableBullets} / ${this.maxBullets}`,
-      {
-        fontSize: '20px',
-        color: '#ffffff',
-        align: 'right'
-      }).setOrigin(1, 0); // 기준점을 오른쪽 위로 설정해서 우측 정렬
-
-    this.speedText = this.add.text(
-      this.cameras.main.width - 20,
-      50, // 탄환 수 텍스트보다 아래 
-      `Speed: ${this.bulletSpeed}`,
-      {
-        fontSize: '20px',
-        color: '#ffffff',
-        align: 'right'
-      }).setOrigin(1, 0);
   }
 
   // create 메서드가 너무 길어져서 별도 함수로 분리 
@@ -99,13 +80,13 @@ export class Game extends Scene {
     // 대포의 각 부분을 따로 만듦
     // 이 오브젝트들의 x,y 좌표는 컨테이너의 중심(0, 0)을 기준으로 함 
 
-    // 몸통 (회색, 가로 50, 세로 100)
+    // 몸통 
     const cannonBody = this.add.rectangle(
       0, 0, 20, 40, 0x666666
     );
 
-    // 포구 (검은색, 가로 50, 세로 20)
-    // 몸통의 위쪽 끝(-50)에 포구의 중심(-10)을 맞춰 y좌표를 -60으로 설정
+    // 포구 
+    // 몸통의 위쪽 끝에 포구의 중심을 맞춰 y좌표를 설정
     const cannonMuzzle = this.add.rectangle(
       0, -20, 20, 10, 0x000000
     );
@@ -121,6 +102,36 @@ export class Game extends Scene {
     // 컨테이너 전체를 회전시킴
     // 컨테이너를 회전하면 그 안의 자식 오브젝트들도 모두 함께 회전 
     this.cannonContainer.angle = 0;
+
+    // 모든 UI 텍스트 생성을 여기로 통합하고 y좌표를 재정렬 
+    const textStyle = {
+      fontSize: '20px',
+      color: '#ffffff',
+      align: 'right'
+    };
+    const rightAlignX = this.cameras.main.width - 20;
+
+    // 회전 속도 UI 텍스트 생성
+    this.rotationSpeedText = this.add.text(
+      rightAlignX,
+      20, // 화면 맨 위로 위치 조정 
+      '',
+      textStyle
+    ).setOrigin(1, 0);
+
+    this.speedText = this.add.text(
+      rightAlignX,
+      50,
+      '',
+      textStyle
+    ).setOrigin(1, 0);
+
+    this.bulletCountText = this.add.text(
+      rightAlignX,
+      80,
+      '',
+      textStyle
+    ).setOrigin(1, 0); // 기준점을 오른쪽 위로 설정해서 우측 정렬
   }
 
   // create 메서드가 너무 길어져서 별도의 함수로 분리 
@@ -189,18 +200,19 @@ export class Game extends Scene {
     // 왼쪽 방향키를 누르고 있으면 
     if (this.cursors.left.isDown) {
       // 대포의 각도를 1씩 감소시켜 왼쪽으로 회전 
-      this.cannonContainer.angle -= 1;
+      this.cannonContainer.angle -= this.cannonRotationSpeed;
     }
     // 오른쪽 방향키를 누르고 있으면
     else if (this.cursors.right.isDown) {
       // 대포의 각도를 1씩 증가시켜 오른쪽으로 회전시킴 
-      this.cannonContainer.angle += 1;
+      this.cannonContainer.angle += this.cannonRotationSpeed;
     }
 
     // UI 텍스트 업데이트 
     const availableBullets = this.bullets.getTotalFree();
     this.bulletCountText.setText(`Bullets: ${availableBullets} / ${this.maxBullets}`);
     this.speedText.setText(`Speed: ${this.bulletSpeed}`);
+    this.rotationSpeedText.setText(`Rotation: ${this.cannonRotationSpeed}`);
 
     // 화면 밖으로 나간 벽돌 비활성화 처리 
     this.bricks.children.each((b) => {
