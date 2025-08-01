@@ -1,5 +1,15 @@
 import { GameObjects, Physics, Scene, Types, Math as pMath } from 'phaser';
 
+// 벽돌 클래스를 정의, Phaser의 Rectangle을 상속받음 
+class Brick extends GameObjects.Rectangle {
+  body: Physics.Arcade.Body;
+
+  constructor(scene: Scene, x: number, y: number) {
+    super(scene, x, y, 40, 20, 0xff5733);
+    scene.physics.add.existing(this); // 물리 엔진에 이 오브젝트를 추가 
+  }
+}
+
 // 총알 클래스를 정의, Phaser의 물리 스프라이트를 상속받음
 class Bullet extends GameObjects.Arc {
   constructor(scene: Scene, x: number, y: number) {
@@ -16,6 +26,7 @@ export class Game extends Scene {
   private maxBullets = 2;
   private bulletCountText: GameObjects.Text; // 탄환수 UI 텍스트 
   private speedText: GameObjects.Text; // 속도 UI 텍스트 
+  private bricks: GameObjects.Group;
 
   // 카운터 숫자와 텍스트 오브젝트를 담을 변수를 미리 선언
   constructor() {
@@ -30,6 +41,20 @@ export class Game extends Scene {
   }
 
   create() {
+    // 벽돌 그룹 생성
+    this.bricks = this.physics.add.group({
+      classType: Brick,
+      runChildUpdate: true,
+      allowGravity: false
+    });
+
+    // 2초마다 spawnBricks 함수를 반복 실행하는 타이머 등록 
+    this.time.addEvent({
+      delay: 2000,
+      callback: this.spawnBricks,
+      callbackScope: this,
+      loop: true
+    });
 
     // 총알 그룹 생성
     // 총알을 효율적으로 재사용하기 위해 그룹(오브젝트 풀)을 사용함 
@@ -43,6 +68,34 @@ export class Game extends Scene {
     // this.physics.add.group을 사용했으므로 아래 코드는 필요 없음 
     // this.physics.world.enable(this.bullets); // 그룹 전체에 물리 효과 적용 
 
+    this.createCannonAndUI();
+    this.setupInput();
+
+    // UI 텍스트 생성
+    const availableBullets = this.bullets.getTotalFree();
+    this.bulletCountText = this.add.text(
+      this.cameras.main.width - 20, // 화면 오른쪽 끝에서 20px 안쪽 
+      20, // 화면 위쪽 끝에서 20px 아래 
+      `Bullets: ${availableBullets} / ${this.maxBullets}`,
+      {
+        fontSize: '20px',
+        color: '#ffffff',
+        align: 'right'
+      }).setOrigin(1, 0); // 기준점을 오른쪽 위로 설정해서 우측 정렬
+
+    this.speedText = this.add.text(
+      this.cameras.main.width - 20,
+      50, // 탄환 수 텍스트보다 아래 
+      `Speed: ${this.bulletSpeed}`,
+      {
+        fontSize: '20px',
+        color: '#ffffff',
+        align: 'right'
+      }).setOrigin(1, 0);
+  }
+
+  // create 메서드가 너무 길어져서 별도 함수로 분리 
+  createCannonAndUI() {
     // 대포의 각 부분을 따로 만듦
     // 이 오브젝트들의 x,y 좌표는 컨테이너의 중심(0, 0)을 기준으로 함 
 
@@ -68,31 +121,12 @@ export class Game extends Scene {
     // 컨테이너 전체를 회전시킴
     // 컨테이너를 회전하면 그 안의 자식 오브젝트들도 모두 함께 회전 
     this.cannonContainer.angle = 0;
+  }
 
+  // create 메서드가 너무 길어져서 별도의 함수로 분리 
+  setupInput() {
     // 키보드 입력을 활성화하는 코드 추가
     this.cursors = this.input.keyboard!.createCursorKeys();
-
-    // UI 텍스트 생성
-    const availableBullets = this.bullets.getTotalFree();
-    this.bulletCountText = this.add.text(
-      this.cameras.main.width - 20, // 화면 오른쪽 끝에서 20px 안쪽 
-      20, // 화면 위쪽 끝에서 20px 아래 
-      `Bullets: ${availableBullets} / ${this.maxBullets}`,
-      {
-        fontSize: '20px',
-        color: '#ffffff',
-        align: 'right'
-      }).setOrigin(1, 0); // 기준점을 오른쪽 위로 설정해서 우측 정렬
-
-    this.speedText = this.add.text(
-      this.cameras.main.width - 20,
-      50, // 탄환 수 텍스트보다 아래 
-      `Speed: ${this.bulletSpeed}`,
-      {
-        fontSize: '20px',
-        color: '#ffffff',
-        align: 'right'
-      }).setOrigin(1, 0);
 
     // 스페이스바 입력 감지
     this.input.keyboard?.on('keydown-SPACE', this.fireBullet, this);
@@ -105,6 +139,28 @@ export class Game extends Scene {
         this.scale.startFullscreen();
       }
     });
+  }
+
+  // 벽돌 생성 및 발사 메서드 추가 
+  spawnBricks() {
+    // 1~3개의 벽돌을 랜덤하게 생성함
+    const brickCount = pMath.Between(1, 3);
+
+    for (let i = 0; i < brickCount; i++) {
+      // 그룹에서 비활성 벽돌을 가져옴 
+      const brick = this.bricks.get() as Brick;
+
+      if (brick) {
+        // 화면 상단 밖, 랜덤한 x 위치에서 시작하도록 설정
+        const x = pMath.Between(20, this.cameras.main.width - 20);
+        brick.setActive(true).setVisible(true).setPosition(x, -50);
+        brick.body.reset(x, -50);
+
+        // 100~300 사이의 랜덤한 수직 속도를 부여함 
+        const speed = pMath.Between(100, 300);
+        brick.body.setVelocity(0, speed);
+      }
+    }
   }
 
   // 총알 발사 메서드 
@@ -145,6 +201,16 @@ export class Game extends Scene {
     const availableBullets = this.bullets.getTotalFree();
     this.bulletCountText.setText(`Bullets: ${availableBullets} / ${this.maxBullets}`);
     this.speedText.setText(`Speed: ${this.bulletSpeed}`);
+
+    // 화면 밖으로 나간 벽돌 비활성화 처리 
+    this.bricks.children.each((b) => {
+      const brick = b as Brick;
+      // 벽돌이 화면 맨 아래를 완전히 통과하면
+      if (brick.active && brick.y > this.cameras.main.height + 50) {
+        brick.setActive(false);
+      }
+      return null;
+    });
 
     // 화면 밖으로 나간 총알을 비활성화 처리함 
     this.bullets.children.each((b) => {
