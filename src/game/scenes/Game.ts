@@ -12,6 +12,10 @@ export class Game extends Scene {
   private cannonContainer: GameObjects.Container;
   private cursors: Types.Input.Keyboard.CursorKeys;
   private bullets: GameObjects.Group;
+  private bulletSpeed = 200;
+  private maxBullets = 2;
+  private bulletCountText: GameObjects.Text; // 탄환수 UI 텍스트 
+  private speedText: GameObjects.Text; // 속도 UI 텍스트 
 
   // 카운터 숫자와 텍스트 오브젝트를 담을 변수를 미리 선언
   constructor() {
@@ -33,7 +37,8 @@ export class Game extends Scene {
       classType: Bullet, // 이 그룹의 멤버는 Bullet 클래스임
       runChildUpdate: true, // 그룹의 자식들이 자신의 update 메서드를 실행하도록 함 
       allowGravity: false, // 총알이 중력의 영향을 받지 않음 
-      defaultKey: 'bullet' // 그룹에서 오브젝트를 가져올 때 사용할 기본 키 
+      defaultKey: 'bullet', // 그룹에서 오브젝트를 가져올 때 사용할 기본 키 
+      maxSize: this.maxBullets // 생성되는 총알의 최대치
     });
     // this.physics.add.group을 사용했으므로 아래 코드는 필요 없음 
     // this.physics.world.enable(this.bullets); // 그룹 전체에 물리 효과 적용 
@@ -67,6 +72,28 @@ export class Game extends Scene {
     // 키보드 입력을 활성화하는 코드 추가
     this.cursors = this.input.keyboard!.createCursorKeys();
 
+    // UI 텍스트 생성
+    const availableBullets = this.bullets.getTotalFree();
+    this.bulletCountText = this.add.text(
+      this.cameras.main.width - 20, // 화면 오른쪽 끝에서 20px 안쪽 
+      20, // 화면 위쪽 끝에서 20px 아래 
+      `Bullets: ${availableBullets} / ${this.maxBullets}`,
+      {
+        fontSize: '20px',
+        color: '#ffffff',
+        align: 'right'
+      }).setOrigin(1, 0); // 기준점을 오른쪽 위로 설정해서 우측 정렬
+
+    this.speedText = this.add.text(
+      this.cameras.main.width - 20,
+      50, // 탄환 수 텍스트보다 아래 
+      `Speed: ${this.bulletSpeed}`,
+      {
+        fontSize: '20px',
+        color: '#ffffff',
+        align: 'right'
+      }).setOrigin(1, 0);
+
     // 스페이스바 입력 감지
     this.input.keyboard?.on('keydown-SPACE', this.fireBullet, this);
 
@@ -83,7 +110,7 @@ export class Game extends Scene {
   // 총알 발사 메서드 
   fireBullet() {
     // 그룹에서 비활성화된 총알을 하나 가져옴. 없으면 새로 생성함 
-    const bullet = this.bullets.get(undefined, undefined, 'bullet') as Bullet;
+    const bullet = this.bullets.get() as Bullet;
 
     if (bullet) {
       // 총알의 시작 위치를 대포의 현재 위치와 각도를 기반으로 계산함 
@@ -97,7 +124,7 @@ export class Game extends Scene {
       (bullet.body as Physics.Arcade.Body).reset(muzzlePosition.x, muzzlePosition.y);
 
       // 계산된 각도로 총알에 속도를 부여함 
-      this.physics.velocityFromRotation(angle, 800, (bullet.body as Physics.Arcade.Body).velocity);
+      this.physics.velocityFromRotation(angle, this.bulletSpeed, (bullet.body as Physics.Arcade.Body).velocity);
     }
   }
 
@@ -113,6 +140,11 @@ export class Game extends Scene {
       // 대포의 각도를 1씩 증가시켜 오른쪽으로 회전시킴 
       this.cannonContainer.angle += 1;
     }
+
+    // UI 텍스트 업데이트 
+    const availableBullets = this.bullets.getTotalFree();
+    this.bulletCountText.setText(`Bullets: ${availableBullets} / ${this.maxBullets}`);
+    this.speedText.setText(`Speed: ${this.bulletSpeed}`);
 
     // 화면 밖으로 나간 총알을 비활성화 처리함 
     this.bullets.children.each((b) => {
