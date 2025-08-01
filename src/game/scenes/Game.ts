@@ -25,7 +25,7 @@ export class Game extends Scene {
   private bricks: GameObjects.Group;
   private bulletSpeed = 200;
   private maxBullets = 2;
-  private cannonRotationSpeed = 3; // 대포 회전 속도 변수 
+  private cannonRotationSpeed = 120; // 대포 회전 속도 변수 
   private bulletCountText: GameObjects.Text; // 탄환수 UI 텍스트 
   private speedText: GameObjects.Text; // 속도 UI 텍스트 
   private rotationSpeedText: GameObjects.Text; // 회전 속도 UI 텍스트 
@@ -196,16 +196,21 @@ export class Game extends Scene {
   }
 
   // update 메서드는 매 프레임마다 실행됨
-  update() {
+  // 시간과 델타 값을 받도록 수정함 
+  update(_time: number, delta: number) {
+    // 델타 타임을 이용해 회전 각도를 계산
+    // delta는 밀리초 단위이므로 1000으로 나눠 초 단위로 바꿈 
+    const rotationAmount = this.cannonRotationSpeed * (delta / 1000);
+
     // 왼쪽 방향키를 누르고 있으면 
     if (this.cursors.left.isDown) {
       // 대포의 각도를 1씩 감소시켜 왼쪽으로 회전 
-      this.cannonContainer.angle -= this.cannonRotationSpeed;
+      this.cannonContainer.angle -= rotationAmount;
     }
     // 오른쪽 방향키를 누르고 있으면
     else if (this.cursors.right.isDown) {
       // 대포의 각도를 1씩 증가시켜 오른쪽으로 회전시킴 
-      this.cannonContainer.angle += this.cannonRotationSpeed;
+      this.cannonContainer.angle += rotationAmount;
     }
 
     // UI 텍스트 업데이트 
