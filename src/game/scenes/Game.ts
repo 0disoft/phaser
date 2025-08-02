@@ -26,10 +26,10 @@ export class Game extends Scene {
   private bulletSpeed = 200;
   private maxBullets = 2;
   private cannonRotationSpeed = 120; // 대포 회전 속도 변수 
+  private brickBaseSpeed = 100; // 벽돌의 기준 낙하 속도 
   private bulletCountText: GameObjects.Text; // 탄환수 UI 텍스트 
   private speedText: GameObjects.Text; // 속도 UI 텍스트 
   private rotationSpeedText: GameObjects.Text; // 회전 속도 UI 텍스트 
-
 
   // 카운터 숫자와 텍스트 오브젝트를 담을 변수를 미리 선언
   constructor() {
@@ -167,9 +167,12 @@ export class Game extends Scene {
         brick.setActive(true).setVisible(true).setPosition(x, -50);
         brick.body.reset(x, -50);
 
-        // 100~300 사이의 랜덤한 수직 속도를 부여함 
-        const speed = pMath.Between(100, 300);
-        brick.body.setVelocity(0, speed);
+        // 낙하 속도 계산 로직  
+        const speedMultiplier = pMath.FloatBetween(0.7, 1.3);
+        // 기준 속도에 랜덤 배율을 곱해 최종 속도 결정 
+        const finalSpeed = this.brickBaseSpeed * speedMultiplier;
+
+        brick.body.setVelocity(0, finalSpeed);
       }
     }
   }
