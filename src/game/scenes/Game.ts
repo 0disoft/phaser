@@ -27,6 +27,8 @@ export class Game extends Scene {
   private maxBullets = 2;
   private cannonRotationSpeed = 30; // 대포 회전 속도 변수 
   private brickBaseSpeed = 60; // 벽돌의 기준 낙하 속도 
+  private score = 0;
+  private scoreText: GameObjects.Text;
   private bulletCountText: GameObjects.Text; // 탄환수 UI 텍스트 
   private speedText: GameObjects.Text; // 속도 UI 텍스트 
   private rotationSpeedText: GameObjects.Text; // 회전 속도 UI 텍스트 
@@ -44,6 +46,13 @@ export class Game extends Scene {
   }
 
   create() {
+    // 파티클 효과에 사용할 8x8 크기의 흰색 픽셀 텍스처를 동적 생성 
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0xffffff, 1);
+    graphics.fillRect(0, 0, 8, 8);
+    graphics.generateTexture('particle', 8, 8);
+    graphics.destroy();
+
     // 벽돌 그룹 생성
     this.bricks = this.physics.add.group({
       classType: Brick,
@@ -73,6 +82,10 @@ export class Game extends Scene {
 
     this.createCannonAndUI();
     this.setupInput();
+
+    // 충돌 감지 설정
+    // bullets 그룹과 bricks 그룹이 겹쳤을때 handleBrickHit 함수 호출
+    this.physics.add.overlap(this.bullets, this.bricks, this.handleBrickHit, undefined, this);
   }
 
   // create 메서드가 너무 길어져서 별도 함수로 분리 
@@ -105,33 +118,41 @@ export class Game extends Scene {
 
     // 모든 UI 텍스트 생성을 여기로 통합하고 y좌표를 재정렬 
     const textStyle = {
-      fontSize: '20px',
+      fontSize: '18px',
       color: '#ffffff',
       align: 'right'
     };
     const rightAlignX = this.cameras.main.width - 20;
 
-    // 회전 속도 UI 텍스트 생성
-    this.rotationSpeedText = this.add.text(
+    // 점수 표시 
+    this.scoreText = this.add.text(
       rightAlignX,
-      20, // 화면 맨 위로 위치 조정 
-      '',
-      textStyle
-    ).setOrigin(1, 0);
-
-    this.speedText = this.add.text(
-      rightAlignX,
-      50,
+      20,
       '',
       textStyle
     ).setOrigin(1, 0);
 
     this.bulletCountText = this.add.text(
       rightAlignX,
-      80,
+      40,
       '',
       textStyle
     ).setOrigin(1, 0); // 기준점을 오른쪽 위로 설정해서 우측 정렬
+
+    this.speedText = this.add.text(
+      rightAlignX,
+      60,
+      '',
+      textStyle
+    ).setOrigin(1, 0);
+
+    // 회전 속도 UI 텍스트 생성
+    this.rotationSpeedText = this.add.text(
+      rightAlignX,
+      80, // 화면 맨 위로 위치 조정 
+      '',
+      textStyle
+    ).setOrigin(1, 0);
   }
 
   // create 메서드가 너무 길어져서 별도의 함수로 분리 
@@ -150,6 +171,30 @@ export class Game extends Scene {
         this.scale.startFullscreen();
       }
     });
+  }
+
+  // 충돌 처리 메서드 추가 
+  handleBrickHit(bullet: any, brick: any) {
+    // 충돌한 총알과 벽돌을 비활성화해서 화면에서 사라지게 함 
+    bullet.setActive(false).setVisible(false);
+    (bullet.body as Physics.Arcade.Body).stop();
+    brick.setActive(false).setVisible(false);
+    (brick.body as Physics.Arcade.Body).stop();
+
+    // 점수 1점 증가
+    this.score++;
+
+    // 파괴 효과 생성
+    const particles = this.add.particles(brick.x, brick.y, 'particle', {
+      speed: 40,
+      lifespan: 200,
+      blendMode: 'ADD',
+      scale: { start: 1, end: 0 },
+      quantity: 20
+    });
+
+    // 파티클이 모두 사라진 뒤에는 파티클 매니저 자체를 파괴해 리소스를 정리
+    this.time.delayedCall(300, () => particles.destroy());
   }
 
   // 벽돌 생성 및 발사 메서드 추가 
@@ -218,6 +263,7 @@ export class Game extends Scene {
 
     // UI 텍스트 업데이트 
     const availableBullets = this.bullets.getTotalFree();
+    this.scoreText.setText(`Score: ${this.score}`);
     this.bulletCountText.setText(`Bullets: ${availableBullets} / ${this.maxBullets}`);
     this.speedText.setText(`Speed: ${this.bulletSpeed}`);
     this.rotationSpeedText.setText(`Rotation: ${this.cannonRotationSpeed}`);
