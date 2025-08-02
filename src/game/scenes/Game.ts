@@ -175,11 +175,13 @@ export class Game extends Scene {
 
   // 충돌 처리 메서드 추가 
   handleBrickHit(bullet: any, brick: any) {
-    // 충돌한 총알과 벽돌을 비활성화해서 화면에서 사라지게 함 
-    bullet.setActive(false).setVisible(false);
-    (bullet.body as Physics.Arcade.Body).stop();
-    brick.setActive(false).setVisible(false);
-    (brick.body as Physics.Arcade.Body).stop();
+    // 물리 바디부터 즉시 비활성화해 추가 충돌 원천 차단
+    brick.body.enable = false;
+    bullet.body.enable = false;
+
+    // 오브젝트를 비활성화하고 화면에서 사라지게 함
+    this.bullets.killAndHide(bullet);
+    this.bricks.killAndHide(brick);
 
     // 점수 1점 증가
     this.score++;
@@ -228,18 +230,23 @@ export class Game extends Scene {
     const bullet = this.bullets.get() as Bullet;
 
     if (bullet) {
-      // 총알의 시작 위치를 대포의 현재 위치와 각도를 기반으로 계산함 
-      const angle = pMath.DegToRad(this.cannonContainer.angle - 90); // 각도를 라디안으로 변환 (-90은 보정)
-      const muzzlePosition = new pMath.Vector2();
-      this.cannonContainer.getWorldTransformMatrix().transformPoint(0, -30, muzzlePosition);
+      if (bullet.body) {
+        // 재사용되는 총알의 물리 바디를 명시적으로 다시 활성화 
+        (bullet.body as Physics.Arcade.Body).enable = true;
 
-      bullet.setActive(true);
-      bullet.setVisible(true);
-      bullet.setPosition(muzzlePosition.x, muzzlePosition.y);
-      (bullet.body as Physics.Arcade.Body).reset(muzzlePosition.x, muzzlePosition.y);
+        // 총알의 시작 위치를 대포의 현재 위치와 각도를 기반으로 계산함 
+        const angle = pMath.DegToRad(this.cannonContainer.angle - 90); // 각도를 라디안으로 변환 (-90은 보정)
+        const muzzlePosition = new pMath.Vector2();
+        this.cannonContainer.getWorldTransformMatrix().transformPoint(0, -30, muzzlePosition);
 
-      // 계산된 각도로 총알에 속도를 부여함 
-      this.physics.velocityFromRotation(angle, this.bulletSpeed, (bullet.body as Physics.Arcade.Body).velocity);
+        bullet.setActive(true);
+        bullet.setVisible(true);
+        bullet.setPosition(muzzlePosition.x, muzzlePosition.y);
+        (bullet.body as Physics.Arcade.Body).reset(muzzlePosition.x, muzzlePosition.y);
+
+        // 계산된 각도로 총알에 속도를 부여함 
+        this.physics.velocityFromRotation(angle, this.bulletSpeed, (bullet.body as Physics.Arcade.Body).velocity);
+      }
     }
   }
 
