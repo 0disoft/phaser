@@ -23,10 +23,10 @@ export class Game extends Scene {
   private cursors: Types.Input.Keyboard.CursorKeys;
   private bullets: GameObjects.Group;
   private bricks: GameObjects.Group;
-  private bulletSpeed = 200;
+  private bulletSpeed = 160;
   private maxBullets = 2;
-  private cannonRotationSpeed = 120; // 대포 회전 속도 변수 
-  private brickBaseSpeed = 100; // 벽돌의 기준 낙하 속도 
+  private cannonRotationSpeed = 30; // 대포 회전 속도 변수 
+  private brickBaseSpeed = 60; // 벽돌의 기준 낙하 속도 
   private bulletCountText: GameObjects.Text; // 탄환수 UI 텍스트 
   private speedText: GameObjects.Text; // 속도 UI 텍스트 
   private rotationSpeedText: GameObjects.Text; // 회전 속도 UI 텍스트 
