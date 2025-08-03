@@ -1,5 +1,63 @@
 import { GameObjects, Physics, Scene, Types, Math as pMath } from 'phaser';
 
+// 아이템 종류를 명확하게 관리하기 위한 열거형 
+enum ItemType {
+  RotationSpeed,
+  BulletSpeed,
+  MaxAmmo,
+  Life
+}
+
+// 아이템 박스 클래스 정의 
+class ItemBox extends GameObjects.Container {
+  public body: Physics.Arcade.Body;
+  public itemType: ItemType;
+  private itemTypeText: GameObjects.Text;
+
+  constructor(scene: Scene, x: number, y: number) {
+    // 박스 몸체와 텍스트 생성
+    const boxBody = new GameObjects.Rectangle(scene, 0, 0, 60, 40, 0x9b59b6);
+    const itemTypeText = new GameObjects.Text(scene, 0, 0, '', { fontSize: '14px', color: '#ffffff' });
+    itemTypeText.setOrigin(0.5);
+
+    // 컨테이너로 두 오브젝트를 묶음
+    super(scene, x, y, [boxBody, itemTypeText]);
+    this.itemTypeText = itemTypeText;
+    this.setSize(60, 40); // 컨테이너의 물리 크기 설정
+
+    scene.add.existing(this);
+    scene.physics.add.existing(this);
+  }
+
+  // 아이템 박스를 재사용할 때 타입을 설정하는 함수 
+  public activate(x: number, y: number, type: ItemType) {
+    this.itemType = type;
+    this.setActive(true);
+    this.setVisible(true);
+    this.setPosition(x, y);
+    this.body.reset(x, y);
+
+    // 타입에 따라 텍스트를 설정
+    switch (type) {
+      case ItemType.RotationSpeed:
+        this.itemTypeText.setText('TURN');
+        break;
+
+      case ItemType.BulletSpeed:
+        this.itemTypeText.setText('SPEED');
+        break;
+
+      case ItemType.MaxAmmo:
+        this.itemTypeText.setText('AMMO');
+        break;
+
+      case ItemType.Life:
+        this.itemTypeText.setText('LIFE');
+        break;
+    }
+  }
+}
+
 // 벽돌 클래스를 정의, Phaser의 Rectangle을 상속받음 
 class Brick extends GameObjects.Rectangle {
   declare body: Physics.Arcade.Body;
@@ -23,15 +81,20 @@ export class Game extends Scene {
   private cursors: Types.Input.Keyboard.CursorKeys;
   private bullets: GameObjects.Group;
   private bricks: GameObjects.Group;
+  private items: GameObjects.Group;
+
   private bulletSpeed = 160;
   private maxBullets = 2;
   private cannonRotationSpeed = 30; // 대포 회전 속도 변수 
   private brickBaseSpeed = 60; // 벽돌의 기준 낙하 속도 
   private score = 0;
+  private lives = 10;
+
   private scoreText: GameObjects.Text;
   private bulletCountText: GameObjects.Text; // 탄환수 UI 텍스트 
   private speedText: GameObjects.Text; // 속도 UI 텍스트 
   private rotationSpeedText: GameObjects.Text; // 회전 속도 UI 텍스트 
+  private livesText: GameObjects.Text; // 목숨 UI 텍스트 
 
   // 카운터 숫자와 텍스트 오브젝트를 담을 변수를 미리 선언
   constructor() {
@@ -60,13 +123,6 @@ export class Game extends Scene {
       allowGravity: false
     });
 
-    // 2초마다 spawnBricks 함수를 반복 실행하는 타이머 등록 
-    this.time.addEvent({
-      delay: 2000,
-      callback: this.spawnBricks,
-      callbackScope: this,
-      loop: true
-    });
 
     // 총알 그룹 생성
     // 총알을 효율적으로 재사용하기 위해 그룹(오브젝트 풀)을 사용함 
@@ -77,8 +133,18 @@ export class Game extends Scene {
       defaultKey: 'bullet', // 그룹에서 오브젝트를 가져올 때 사용할 기본 키 
       maxSize: this.maxBullets // 생성되는 총알의 최대치
     });
-    // this.physics.add.group을 사용했으므로 아래 코드는 필요 없음 
+    // this.physics.add.group을 사용했으므로 아래 코드는 필요 없음
     // this.physics.world.enable(this.bullets); // 그룹 전체에 물리 효과 적용 
+
+    // TODO: 아이템상자 그룹 생성 
+
+    // 2초마다 spawnBricks 함수를 반복 실행하는 타이머 등록 
+    this.time.addEvent({
+      delay: 2000,
+      callback: this.spawnBricks,
+      callbackScope: this,
+      loop: true
+    });
 
     this.createCannonAndUI();
     this.setupInput();
