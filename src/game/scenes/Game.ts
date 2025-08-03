@@ -1,4 +1,4 @@
-import { GameObjects, Physics, Scene, Types, Math as pMath } from 'phaser';
+import { GameObjects, Physics, Math as pMath, Scene, Time, Types } from 'phaser';
 
 // 아이템 종류를 명확하게 관리하기 위한 열거형 
 enum ItemType {
@@ -81,6 +81,10 @@ class Bullet extends GameObjects.Arc {
 }
 
 export class Game extends Scene {
+  // 게임 상태 및 타이머 변수 추가
+  private isGameOver = false;
+  private brickSpawnTimer: Time.TimerEvent;
+
   // 컨테이너와 커서 키 객체를 다른 메서드(update)에서도 사용하기 위해 클래스 변수로 선언 
   private cannonContainer: GameObjects.Container;
   private cursors: Types.Input.Keyboard.CursorKeys;
@@ -107,10 +111,12 @@ export class Game extends Scene {
   }
 
   preload() {
-    // this.load.setPath('assets');
+    this.load.setPath('assets/');
 
     // this.load.image('background', 'bg.png');
     // this.load.image('logo', 'logo.png');
+    this.load.audio('fire-sound', 'sounds/explosion.mp3');
+    this.load.audio('hit-sound', 'sounds/hitHurt.mp3');
   }
 
   create() {
@@ -148,8 +154,9 @@ export class Game extends Scene {
       allowGravity: false,
     });
 
-    // 2초마다 spawnBricks 함수를 반복 실행하는 타이머 등록 
-    this.time.addEvent({
+    // 2초마다 spawnFallingObjects 함수를 반복 실행하는 타이머 등록 
+    // 타이머를 변수에 저장해 나중에 제어할 수 있게 함 
+    this.brickSpawnTimer = this.time.addEvent({
       delay: 2000,
       callback: this.spawnFallingObjects,
       callbackScope: this,
@@ -268,6 +275,9 @@ export class Game extends Scene {
     this.bullets.killAndHide(bullet);
     this.bricks.killAndHide(brick);
 
+    // 벽돌에 맞으면 사운드 재생
+    this.sound.play('hit-sound');
+
     // 점수 1점 증가
     this.score++;
 
@@ -296,6 +306,9 @@ export class Game extends Scene {
     // 오브젝트 비활성화 
     this.items.killAndHide(itemBox);
     this.bullets.killAndHide(bullet);
+
+    // 아이템박스에 맞으면 사운드 재생 
+    this.sound.play('hit-sound');
 
     // 아이템 타입에 따라 능력치 적용
     switch (itemBox.itemType) {
@@ -367,10 +380,18 @@ export class Game extends Scene {
 
   // 총알 발사 메서드 
   fireBullet() {
+    // 게임 오버 상태에서는 발사되지 않도록 함 
+    if (this.isGameOver) {
+      return;
+    }
+
     // 그룹에서 비활성화된 총알을 하나 가져옴. 없으면 새로 생성함 
     const bullet = this.bullets.get() as Bullet;
 
     if (bullet) {
+      // 총알이 성공적으로 발사될 때 사운드 재생
+      this.sound.play('fire-sound');
+
       if (bullet.body) {
         // 재사용되는 총알의 물리 바디를 명시적으로 다시 활성화 
         (bullet.body as Physics.Arcade.Body).enable = true;
@@ -391,9 +412,58 @@ export class Game extends Scene {
     }
   }
 
+  // 게임 오버 실행 메서드 
+  triggerGameOver() {
+    this.isGameOver = true;
+
+    // 물리 엔진과 벽돌 생성 타이머를 멈춤
+    this.physics.pause();
+    this.brickSpawnTimer.paused = true;
+
+    // 화면을 어둡게 덮는 반투명 레이어 추가 
+    this.add.rectangle(
+      this.cameras.main.width / 2, this.cameras.main.height / 2,
+      this.cameras.main.width, this.cameras.main.height,
+      0x000000, 0.7
+    ).setDepth(100); // 다른 UI 요소들보다 위에 있도록 depth 설정
+
+    // 버튼 스타일을 변수로 정의 
+    const buttonX = this.cameras.main.width / 2;
+    const buttonY = this.cameras.main.height / 2;
+    const buttonWidth = 220;
+    const buttonHeight = 70;
+    const cornerRadius = 20;
+
+    // Graphics 오브젝트를 사용해 둥근 사각형 그림
+    const buttonBackground = this.add.graphics().setDepth(100);
+    buttonBackground.fillStyle(0x555555, 1); // 버튼 채우기 색상
+    buttonBackground.fillRoundedRect(buttonX - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, cornerRadius);
+
+    // Restart 텍스트를 버튼 위에 배치 
+    const restartButton = this.add.text(
+      buttonX,
+      buttonY,
+      'Restart',
+      { fontSize: '32px', color: '#00ff00', align: 'center' }
+    )
+      .setOrigin(0.5)
+      .setDepth(101)
+      .setInteractive({ useHandCursor: true });
+
+    // 버튼 클릭시 scene을 재시작
+    restartButton.on('pointerdown', () => {
+      this.scene.restart();
+    });
+  }
+
   // update 메서드는 매 프레임마다 실행됨
   // 시간과 델타 값을 받도록 수정함 
   update(_time: number, delta: number) {
+    // 게임 오버 상태에서는 아무것도 업데이트하지 않음
+    if (this.isGameOver) {
+      return;
+    }
+
     // 델타 타임을 이용해 회전 각도를 계산
     // delta는 밀리초 단위이므로 1000으로 나눠 초 단위로 바꿈 
     const rotationAmount = this.cannonRotationSpeed * (delta / 1000);
@@ -417,12 +487,17 @@ export class Game extends Scene {
     this.rotationSpeedText.setText(`Rotation: ${this.cannonRotationSpeed}`);
     this.livesText.setText(`Lives: ${this.lives}`);
 
-    // 화면 밖으로 나간 벽돌 비활성화 처리 
+    // 화면 밖으로 나간 벽돌 비활성화 처리 및 게임 오버 체크 
     this.bricks.children.each((b: any) => {
       // 벽돌이 화면 맨 아래를 완전히 통과하면
       if (b.active && b.y > this.cameras.main.height + 50) {
         this.lives--; // 목숨 1 감소 
         b.setActive(false);
+
+        // 목숨이 0 이하가 되면 게임 오버 실행
+        if (this.lives <= 0) {
+          this.triggerGameOver();
+        }
       }
       return null;
     });
