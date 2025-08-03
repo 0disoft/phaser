@@ -10,20 +10,20 @@ enum ItemType {
 
 // 아이템 박스 클래스 정의 
 class ItemBox extends GameObjects.Container {
-  public body: Physics.Arcade.Body;
+  public declare body: Physics.Arcade.Body;
   public itemType: ItemType;
   private itemTypeText: GameObjects.Text;
 
   constructor(scene: Scene, x: number, y: number) {
     // 박스 몸체와 텍스트 생성
-    const boxBody = new GameObjects.Rectangle(scene, 0, 0, 60, 40, 0x9b59b6);
-    const itemTypeText = new GameObjects.Text(scene, 0, 0, '', { fontSize: '14px', color: '#ffffff' });
+    const boxBody = new GameObjects.Rectangle(scene, 0, 0, 40, 20, 0x9b59b6);
+    const itemTypeText = new GameObjects.Text(scene, 0, 0, '', { fontSize: '13px', color: '#ffffff' });
     itemTypeText.setOrigin(0.5);
 
     // 컨테이너로 두 오브젝트를 묶음
     super(scene, x, y, [boxBody, itemTypeText]);
     this.itemTypeText = itemTypeText;
-    this.setSize(60, 40); // 컨테이너의 물리 크기 설정
+    this.setSize(40, 20); // 컨테이너의 물리 크기 설정
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -64,14 +64,19 @@ class Brick extends GameObjects.Rectangle {
 
   constructor(scene: Scene, x: number, y: number) {
     super(scene, x, y, 40, 20, 0xff5733);
-    scene.physics.add.existing(this); // 물리 엔진에 이 오브젝트를 추가 
+    scene.add.existing(this); // 스테이지에 오브젝트 추가 
+    scene.physics.add.existing(this); // 물리 엔진에 오브젝트를 추가 
   }
 }
 
 // 총알 클래스를 정의, Phaser의 물리 스프라이트를 상속받음
 class Bullet extends GameObjects.Arc {
+  declare body: Physics.Arcade.Body;
+
   constructor(scene: Scene, x: number, y: number) {
     super(scene, x, y, 5, 0, 360, false, 0xffffff, 1);
+    scene.add.existing(this);
+    scene.physics.add.existing(this);
   }
 }
 
@@ -83,12 +88,12 @@ export class Game extends Scene {
   private bricks: GameObjects.Group;
   private items: GameObjects.Group;
 
-  private bulletSpeed = 160;
-  private maxBullets = 2;
-  private cannonRotationSpeed = 30; // 대포 회전 속도 변수 
-  private brickBaseSpeed = 60; // 벽돌의 기준 낙하 속도 
+  private bulletSpeed = 170;
+  private maxBullets = 3;
+  private cannonRotationSpeed = 40; // 대포 회전 속도 변수 
+  private brickBaseSpeed = 55; // 벽돌의 기준 낙하 속도 
   private score = 0;
-  private lives = 10;
+  private lives = 20;
 
   private scoreText: GameObjects.Text;
   private bulletCountText: GameObjects.Text; // 탄환수 UI 텍스트 
@@ -137,11 +142,16 @@ export class Game extends Scene {
     // this.physics.world.enable(this.bullets); // 그룹 전체에 물리 효과 적용 
 
     // TODO: 아이템상자 그룹 생성 
+    this.items = this.physics.add.group({
+      classType: ItemBox,
+      runChildUpdate: true,
+      allowGravity: false,
+    });
 
     // 2초마다 spawnBricks 함수를 반복 실행하는 타이머 등록 
     this.time.addEvent({
       delay: 2000,
-      callback: this.spawnBricks,
+      callback: this.spawnFallingObjects,
       callbackScope: this,
       loop: true
     });
@@ -152,6 +162,7 @@ export class Game extends Scene {
     // 충돌 감지 설정
     // bullets 그룹과 bricks 그룹이 겹쳤을때 handleBrickHit 함수 호출
     this.physics.add.overlap(this.bullets, this.bricks, this.handleBrickHit, undefined, this);
+    this.physics.add.overlap(this.bullets, this.items, this.handleItemHit, undefined, this);
   }
 
   // create 메서드가 너무 길어져서 별도 함수로 분리 
@@ -215,7 +226,15 @@ export class Game extends Scene {
     // 회전 속도 UI 텍스트 생성
     this.rotationSpeedText = this.add.text(
       rightAlignX,
-      80, // 화면 맨 위로 위치 조정 
+      80,
+      '',
+      textStyle
+    ).setOrigin(1, 0);
+
+    // 남은 목숨 UI 텍스트 생성
+    this.livesText = this.add.text(
+      rightAlignX,
+      100,
       '',
       textStyle
     ).setOrigin(1, 0);
@@ -262,30 +281,86 @@ export class Game extends Scene {
     });
 
     // 파티클이 모두 사라진 뒤에는 파티클 매니저 자체를 파괴해 리소스를 정리
-    this.time.delayedCall(300, () => particles.destroy());
+    this.time.delayedCall(200, () => particles.destroy());
   }
 
-  // 벽돌 생성 및 발사 메서드 추가 
-  spawnBricks() {
-    // 1~3개의 벽돌을 랜덤하게 생성함
-    const brickCount = pMath.Between(1, 3);
+  // 아이템 충돌 처리 메서드 
+  handleItemHit(bullet: any, item: any) {
+    // any 타입으로 받은 item을 ItemBox 타입으로 형변환
+    const itemBox = item as ItemBox;
 
-    for (let i = 0; i < brickCount; i++) {
-      // 그룹에서 비활성 벽돌을 가져옴 
-      const brick = this.bricks.get() as Brick;
+    // 물리 바디 비활성화
+    itemBox.body.enable = false;
+    bullet.body.enable = false;
 
-      if (brick) {
-        // 화면 상단 밖, 랜덤한 x 위치에서 시작하도록 설정
-        const x = pMath.Between(20, this.cameras.main.width - 20);
-        brick.setActive(true).setVisible(true).setPosition(x, -50);
-        brick.body.reset(x, -50);
+    // 오브젝트 비활성화 
+    this.items.killAndHide(itemBox);
+    this.bullets.killAndHide(bullet);
 
-        // 낙하 속도 계산 로직  
-        const speedMultiplier = pMath.FloatBetween(0.7, 1.3);
-        // 기준 속도에 랜덤 배율을 곱해 최종 속도 결정 
-        const finalSpeed = this.brickBaseSpeed * speedMultiplier;
+    // 아이템 타입에 따라 능력치 적용
+    switch (itemBox.itemType) {
+      case ItemType.RotationSpeed:
+        this.cannonRotationSpeed += 5;
+        break;
 
-        brick.body.setVelocity(0, finalSpeed);
+      case ItemType.BulletSpeed:
+        this.bulletSpeed += 5;
+        break;
+
+      case ItemType.MaxAmmo:
+        this.maxBullets++;
+        // 총알 그룹의 실제 maxSize 속성도 함께 업데이트
+        this.bullets.maxSize = this.maxBullets;
+        break;
+
+      case ItemType.Life:
+        this.lives++;
+        break;
+    }
+
+    // 파괴 효과 생성
+    const particles = this.add.particles(itemBox.x, itemBox.y, 'particle', {
+      speed: 40,
+      lifespan: 200,
+      blendMode: 'ADD',
+      scale: { start: 1, end: 0 },
+      quantity: 20,
+      tint: 0x9b59b6
+    });
+    this.time.delayedCall(200, () => particles.destroy());
+  }
+
+  // 낙하 오브젝트 생성 (벽돌 또는 아이템)
+  spawnFallingObjects() {
+    // 이번에 몇개의 오브젝트를 떨어뜨릴지 결정함
+    const objectCount = pMath.Between(1, 3);
+
+    // 결정된 개수만큼 반복
+    for (let i = 0; i < objectCount; i++) {
+      // 루프 안에서 각 오브젝트가 아이템일지 벽돌일지 결정함  
+      // 25% 확률로 아이템 박스 생성 
+      if (pMath.FloatBetween(0, 1) < 0.25) {
+        const item = this.items.get() as ItemBox;
+        if (item) {
+          const x = pMath.Between(30, this.cameras.main.width - 30);
+          // 4가지 아이템 타입 중 하나를 랜덤하게 선택 
+          const randomType = pMath.RND.pick([ItemType.RotationSpeed, ItemType.BulletSpeed, ItemType.MaxAmmo, ItemType.Life]);
+          item.activate(x, -50 - (i * 60), randomType); // 겹치지 않게 y위치 조정 
+          item.body.setVelocity(0, this.brickBaseSpeed * 0.8); // 아이템 낙하 속도 
+        }
+      } else { // 75% 확률로 벽돌 생성 
+        // 그룹에서 비활성 벽돌을 가져옴 
+        const brick = this.bricks.get() as Brick;
+        if (brick) {
+          const x = pMath.Between(20, this.cameras.main.width - 20);
+          brick.setActive(true).setVisible(true).setPosition(x, -50 - (i * 60)); // 겹치지 않게 y위치 조정 
+          brick.body.reset(x, -50 - (i * 60));
+
+          // 낙하 속도 계산 로직  
+          const speedMultiplier = pMath.FloatBetween(0.7, 1.3);
+          // 기준 속도에 랜덤 배율을 곱해 최종 속도 결정 
+          brick.body.setVelocity(0, this.brickBaseSpeed * speedMultiplier);
+        }
       }
     }
   }
@@ -340,24 +415,30 @@ export class Game extends Scene {
     this.bulletCountText.setText(`Bullets: ${availableBullets} / ${this.maxBullets}`);
     this.speedText.setText(`Speed: ${this.bulletSpeed}`);
     this.rotationSpeedText.setText(`Rotation: ${this.cannonRotationSpeed}`);
+    this.livesText.setText(`Lives: ${this.lives}`);
 
     // 화면 밖으로 나간 벽돌 비활성화 처리 
-    this.bricks.children.each((b) => {
-      const brick = b as Brick;
+    this.bricks.children.each((b: any) => {
       // 벽돌이 화면 맨 아래를 완전히 통과하면
-      if (brick.active && brick.y > this.cameras.main.height + 50) {
-        brick.setActive(false);
+      if (b.active && b.y > this.cameras.main.height + 50) {
+        this.lives--; // 목숨 1 감소 
+        b.setActive(false);
+      }
+      return null;
+    });
+
+    // 화면 밖으로 나간 아이템 비활성화 처리
+    this.items.children.each((i: any) => {
+      if (i.active && i.y > this.cameras.main.height + 50) {
+        i.setActive(false);
       }
       return null;
     });
 
     // 화면 밖으로 나간 총알을 비활성화 처리함 
-    this.bullets.children.each((b) => {
-      const bullet = b as GameObjects.Arc;
-      if (bullet.active && !this.cameras.main.worldView.contains(bullet.x, bullet.y)) {
-        bullet.setActive(false);
-        bullet.setVisible(false);
-        (bullet.body as Physics.Arcade.Body).stop();
+    this.bullets.children.each((b: any) => {
+      if (b.active && !this.cameras.main.worldView.contains(b.x, b.y)) {
+        this.bullets.killAndHide(b);
       }
       return null;
     });
