@@ -187,7 +187,7 @@ export class Game extends Scene {
     this.score++;
 
     // 파괴 효과 생성
-    const particles = this.add.particles(brick.x, brick.y, 'particle', {
+    const particles = this.add.particles(bullet.x, bullet.y, 'particle', {
       speed: 40,
       lifespan: 200,
       blendMode: 'ADD',
