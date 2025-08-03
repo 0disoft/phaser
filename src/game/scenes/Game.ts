@@ -120,6 +120,9 @@ export class Game extends Scene {
   }
 
   create() {
+    // 전체 불륨 감소 
+    this.sound.setVolume(0.1);
+
     // 파티클 효과에 사용할 8x8 크기의 흰색 픽셀 텍스처를 동적 생성 
     const graphics = this.add.graphics();
     graphics.fillStyle(0xffffff, 1);
@@ -434,19 +437,27 @@ export class Game extends Scene {
     const buttonHeight = 70;
     const cornerRadius = 20;
 
-    // Graphics 오브젝트를 사용해 둥근 사각형 그림
-    const buttonBackground = this.add.graphics().setDepth(100);
-    buttonBackground.fillStyle(0x555555, 1); // 버튼 채우기 색상
-    buttonBackground.fillRoundedRect(buttonX - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, cornerRadius);
+    // Graphics 오브젝트를 사용해 버튼 배경 생성 
+    const buttonBackground = this.add.graphics()
+      .fillStyle(0x555555, 1)
+      .fillRoundedRect(-buttonWidth / 2, -buttonHeight / 2, buttonWidth, buttonHeight, cornerRadius);
 
-    // Restart 텍스트를 버튼 위에 배치 
-    const restartButton = this.add.text(
-      buttonX,
-      buttonY,
+    // Restart 텍스트 
+    const restartText = this.add.text(
+      0,
+      0,
       'Restart',
       { fontSize: '32px', color: '#00ff00', align: 'center' }
     )
-      .setOrigin(0.5)
+      .setOrigin(0.5);
+
+    // 컨테이너를 만들고 배경과 텍스트를 자식으로 추가 
+    const restartButton = this.add.container(
+      buttonX,
+      buttonY,
+      [buttonBackground, restartText],
+    )
+      .setSize(buttonWidth, buttonHeight) // 컨테이너 크기 지정 
       .setDepth(101)
       .setInteractive({ useHandCursor: true });
 
